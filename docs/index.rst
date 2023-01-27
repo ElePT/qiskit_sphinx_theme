@@ -17,6 +17,7 @@ Qiskit sphinx theme |version| documentation
    Images <sphinx_guide/images>
    Jupyter <sphinx_guide/jupyter>
    Panels <sphinx_guide/panels>
+   Migration Guides <migrations/index>
 
 
 .. Hiding - Indices and tables
