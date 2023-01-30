@@ -8,3 +8,4 @@ Qiskit Migration Guides
    :maxdepth: 1
 
    backendV2
+   opflow_operator_logic
