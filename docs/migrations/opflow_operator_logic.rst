@@ -32,11 +32,11 @@ Do we want to include utilities and mixins? they are documented in principle. We
    :header-rows: 1
 
    * - opflow
-     - quantum_info
+     - alternative
      - Notes
    * - ``opflow.OperatorBase``
 
-     - ``quantum_info.BaseOperator``
+     - ``alternative.BaseOperator``
 
      - Opflow side: StarAlgebraMixin, TensorMixin. QI side: GroupMixin
 
@@ -47,7 +47,7 @@ Do we want to include utilities and mixins? they are documented in principle. We
    :header-rows: 1
 
    * - opflow
-     - quantum_info
+     - alternative
      - Notes
    * - 1-Qubit Paulis: ``X``, ``Y``, ``Z``, ``I``
 
@@ -79,7 +79,7 @@ Do we want to include utilities and mixins? they are documented in principle. We
    :header-rows: 1
 
    * - opflow
-     - quantum_info
+     - alternative
      - Notes
 
    * - Common non-parametrized gates (Clifford): ``CX``, ``S``, ``H``, ``T``, ``CZ``, ``Swap``
@@ -114,7 +114,7 @@ Do we want to include utilities and mixins? they are documented in principle. We
    :header-rows: 1
 
    * - opflow
-     - quantum_info
+     - alternative
      - Notes
 
    * - 1-Qubit States: ``Zero``, ``One``, ``Plus``, ``Minus``
@@ -173,7 +173,7 @@ there’s the Statevector (VectorStateFn) and StabilizerState (Clifford based ve
 - VectorStateFn
 - SparseVectorStateFn
 - OperatorStateFn
-- CVaRMeasurement --> Functionality replaced by DiagonalEstimator
+- CVaRMeasurement --> Used in :class:`~qiskit.opflow.CVaRExpectation`. Functionality replaced by DiagonalEstimator
 
 **CONVERTERS**
 --------------
@@ -191,7 +191,7 @@ In this module you can find:
    :header-rows: 1
 
    * - opflow
-     - primitives
+     - alternative
      - Notes
 
    * - ``CircuitSampler``
@@ -199,39 +199,46 @@ In this module you can find:
        Example:
         .. code-block:: python
 
-            from qiskit import Aer, QuantumCircuit
-            from qiskit.opflow import X, Z, StateFn, CircuitSampler
-            state = QuantumCircuit(1)
-            state.h(0)
-            hamiltonian = X + Z
-            expr = StateFn(hamiltonian, is_measurement=True).compose(state)
-            backend = Aer.get_backend('statevector_simulator')
-            sampler = CircuitSampler(backend)
-            sampled = sampler.convert(expr)
+            from qiskit import QuantumCircuit
+            from qiskit.opflow import X, Z, StateFn, CircuitStateFn, CircuitSampler
+            from qiskit.providers.aer import AerSimulator
 
-     - ``qiskit.primitives.Sampler``
+            qc = QuantumCircuit(1)
+            qc.h(0)
+            state = CircuitStateFn(qc)
+            hamiltonian = X + Z
+
+            expr = StateFn(hamiltonian, is_measurement=True).compose(state)
+            backend = AerSimulator()
+            sampler = CircuitSampler(backend)
+            expectation = sampler.convert(expr)
+            expectation_value = expectation.eval().real
+
+     - ``qiskit.primitives.Estimator``
 
        Example:
         .. code-block:: python
 
             from qiskit import QuantumCircuit
-            from qiskit.primitives import Sampler
+            from qiskit.primitives import Estimator
             from qiskit.quantum_info import SparsePauliOp
+
             state = QuantumCircuit(1)
             state.h(0)
             hamiltonian = SparsePauliOp.from_list([('X', 1), ('Z',1)])
-            sampler = Sampler()
-            sampled = sampler.run(state, hamiltonian).result().quasi_dists
+
+            estimator = Estimator()
+            expectation_value = estimator.run(state, hamiltonian).result().values
 
      -  Provided with a backend/quantum instance and an operator expression, the job of the circuit sampler is
         to execute all circuits in the operator expression and replace them by the circuit result. This can now
-        be done through a sampler primitive. Please note that the sampler returns quasi-dists (link to docs).
+        be done with an estimator primitive.
 
 .. list-table:: Migration of ``qiskit.opflow.TwoQubitReduction``
    :header-rows: 1
 
    * - opflow
-     - quantum_info?
+     - alternative?
      - Notes
 
    * - ``TwoQubitReduction``
@@ -267,7 +274,7 @@ Trotterizations are replaced by the synthesis methods in qiskit.synthesis.evolut
 
 **EXPECTATIONS**
 ----------------
-Replaced by estimator primitive, also quantum_info.Statevector???
+Replaced by estimator primitive.
 
 In this module you can find:
 
@@ -275,7 +282,44 @@ In this module you can find:
 - AerPauliExpectation
 - MatrixExpectation
 - PauliExpectation
-- CVaRExpectation
+- CVaRExpectation -> Replaced by DiagonalEstimator.
+
+.. list-table:: Migration of ``qiskit.opflow.expectations.CVaRExpectation``
+   :header-rows: 1
+
+   * - opflow
+     - alternative
+     - Notes
+
+   * - ``opflow.expectations.CVaRExpectation``
+
+       Example:
+        .. code-block:: python
+
+            from qiskit.opflow import Z, Plus, StateFn, CVaRExpectation
+
+            state = Plus
+            observable = StateFn(Z)
+            op = ~observable @ state
+            cvar_expecation = CVaRExpectation(alpha=0.2)
+            cvar = cvar_expecation.convert(op).eval()
+     - ``algorithms.minimum_eigensolvers.diagonal_estimator._DiagonalEstimator``
+
+       Example:
+        .. code-block:: python
+
+            from qiskit import QuantumCircuit
+            from qiskit.primitives import Sampler
+            from qiskit.algorithms.minimum_eigensolvers.diagonal_estimator import _DiagonalEstimator as CVaREstimator
+
+            state = QuantumCircuit(1)
+            state.h(0)
+            state.measure_all() # add measurements
+            observable = SparsePauliOp('Z')
+            estimator = CVaREstimator(sampler=Sampler(), aggregation=0.2)
+            cvar = estimator.run(state, observable).result().values
+     -
+
 
 **GRADIENTS**
 --------------
