@@ -1,6 +1,11 @@
-======================================
+=======================
 Opflow Migration Guide
-======================================
+=======================
+
+*Jump to* `TL;DR`_.
+
+Background
+----------
 
 The ``qiskit.opflow`` module was introduced as a layer between circuits and algorithms that presented a series of
 useful tools for quantum algorithms research and development. The core design of opflow was based on
@@ -23,7 +28,7 @@ for example the ``CVarMeasurement`` or the ``Z2Symmetries``.
 The recent introduction of the ``qiskit.primitives`` challenged the assumptions upon which opflow was designed. In particular,
 the ``Estimator`` primitive provides the algorithmic abstraction to easily obtain expectation values from a series of
 circuit-observable pairs, superseding most of the functionality of the ``expectations`` submodule. Without the need of
-building opflow expectations, most of the components in ``converters`` and ``operators`` also became redundant, as they
+building opflow expectations, most of the components in ``operators`` also became redundant, as they
 commonly wrapped elements from ``qiskit.quantum_info``.
 
 In addition to this, the introduction of the primitives  motivated the development of a new gradient framework that
@@ -37,7 +42,15 @@ and manipulating quantum operators.
 This guide traverses all of the opflow submodules and provides alternatives for each of them, be them a direct alternative
 (i.e. using ``quantum_info``) or an explanation of the new way of doing things.
 
-Opflow modules covered in this guide.
+TL;DR
+-----
+The assumptions based on which ``qiskit.opflow`` was written are no longer up-to-date. Thus, it is being deprecated.
+
+Index
+-----
+This guide covers the migration from these opflow sub-modules:
+
+**Operators**
 
 - Operator Base Class
 - Operator Globals [Done]
@@ -45,16 +58,20 @@ Opflow modules covered in this guide.
 - Primitive Ops
 - State Functions
 
+**Converters**
+
 - Converters [Done-ish]
 - Evolutions [Done-ish]
 - Expectations
+
+**Gradients**
 
 - Gradients [links]
 
 Do we want to include utilities and mixins? they are documented in principle. We could have a link to the API ref.
 
-**OPERATOR BASE CLASS**
------------------------
+Operator Base Class
+-------------------
 
 .. list-table:: Migration of ``qiskit.opflow.operator_base``
    :header-rows: 1
@@ -68,8 +85,11 @@ Do we want to include utilities and mixins? they are documented in principle. We
 
      - Opflow side: StarAlgebraMixin, TensorMixin. QI side: GroupMixin
 
-**OPERATOR GLOBALS**
---------------------
+Operator Globals
+----------------
+
+1-Qubit Paulis
+~~~~~~~~~~~~~~
 
 .. list-table:: Migration of ``qiskit.opflow.operator_globals (1/3)``
    :header-rows: 1
@@ -77,32 +97,34 @@ Do we want to include utilities and mixins? they are documented in principle. We
    * - opflow
      - alternative
      - Notes
-   * - 1-Qubit Paulis: ``X``, ``Y``, ``Z``, ``I``
+   * - ``qiskit.opflow.X``, ``qiskit.opflow.Y``, ``qiskit.opflow.Z``, ``qiskit.opflow.I``
+     - ``quantum_info.Pauli``
+     - For direct compatibility with classes in ``qiskit.algorithms``, wrap in ``quantum_info.SparsePauliOp``.
+   * -
 
-       Example:
         .. code-block:: python
 
             from qiskit.opflow import X
             operator = X ^ X
 
-     - ``quantum_info.Pauli``
+     -
 
-       Example:
         .. code-block:: python
 
             from qiskit.quantum_info import Pauli
             X = Pauli('X')
             op = X ^ X
 
-     - For direct compatibility with classes in ``qiskit.algorithms``, wrap in ``quantum_info.SparsePauliOp``.
+     -
 
-       Example:
         .. code-block:: python
 
             from qiskit.quantum_info import Pauli, SparsePauliOp
             op = Pauli('X') ^ Pauli('X') # equivalent to:
             op = SparsePauliOp('XX')
 
+Common non-parametrized gates (Clifford)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. list-table:: Migration of ``qiskit.opflow.operator_globals (2/3)``
    :header-rows: 1
 
@@ -110,17 +132,19 @@ Do we want to include utilities and mixins? they are documented in principle. We
      - alternative
      - Notes
 
-   * - Common non-parametrized gates (Clifford): ``CX``, ``S``, ``H``, ``T``, ``CZ``, ``Swap``
+   * - ``qiskit.opflow.CX``, ``qiskit.opflow.S``, ``qiskit.opflow.H``, ``qiskit.opflow.T``, ``qiskit.opflow.CZ``, ``qiskit.opflow.Swap``
+     - Append corresponding gate to ``QuantumCircuit`` + ``quantum_info.Clifford`` + ``.to_operator()``
+     -
 
-       Example:
+   * -
+
         .. code-block:: python
 
             from qiskit.opflow import H
             op = H ^ H
 
-     - Append corresponding gate to QuantumCircuit + ``quantum_info.Clifford`` + ``to_operator()``
+     -
 
-       Example:
         .. code-block:: python
 
             from qiskit import QuantumCircuit
@@ -137,7 +161,6 @@ Do we want to include utilities and mixins? they are documented in principle. We
             op = H ^ H
 
      -
-
 .. list-table:: Migration of ``qiskit.opflow.operator_globals (3/3)``
    :header-rows: 1
 
@@ -146,16 +169,18 @@ Do we want to include utilities and mixins? they are documented in principle. We
      - Notes
 
    * - 1-Qubit States: ``Zero``, ``One``, ``Plus``, ``Minus``
+     - ``quantum_info.Statevector``
+     -
 
-       Example:
+   * -
+
         .. code-block:: python
 
             from qiskit.opflow import Zero, One
             op = Zero ^ One
 
-     - ``quantum_info.Statevector``
+     -
 
-       Example:
         .. code-block:: python
 
             from qiskit import QuantumCircuit
@@ -166,6 +191,7 @@ Do we want to include utilities and mixins? they are documented in principle. We
             one = Statevector(qc)
             op = zero ^ one
      -
+
 
 **PRIMITIVE OPS**
 -----------------
@@ -223,8 +249,11 @@ In this module you can find:
      - Notes
 
    * - ``CircuitSampler``
+     - ``qiskit.primitives.Estimator``
+     -
 
-       Example:
+   * -
+
         .. code-block:: python
 
             from qiskit import QuantumCircuit
@@ -242,9 +271,8 @@ In this module you can find:
             expectation = sampler.convert(expr)
             expectation_value = expectation.eval().real
 
-     - ``qiskit.primitives.Estimator``
+     -
 
-       Example:
         .. code-block:: python
 
             from qiskit import QuantumCircuit
@@ -258,9 +286,7 @@ In this module you can find:
             estimator = Estimator()
             expectation_value = estimator.run(state, hamiltonian).result().values
 
-     -  Provided with a backend/quantum instance and an operator expression, the job of the circuit sampler is
-        to execute all circuits in the operator expression and replace them by the circuit result. This can now
-        be done with an estimator primitive.
+     -
 
 .. list-table:: Migration of ``qiskit.opflow.TwoQubitReduction``
    :header-rows: 1
@@ -319,8 +345,10 @@ This functionality can now be found in the estimator primitive.
      - Notes
 
    * - ``opflow.expectations.CVaRExpectation``
+     - ``algorithms.minimum_eigensolvers.diagonal_estimator._DiagonalEstimator``
+     -
+   * -
 
-       Example:
         .. code-block:: python
 
             from qiskit.opflow import Z, Plus, StateFn, CVaRExpectation
@@ -330,9 +358,8 @@ This functionality can now be found in the estimator primitive.
             op = ~observable @ state
             cvar_expecation = CVaRExpectation(alpha=0.2)
             cvar = cvar_expecation.convert(op).eval()
-     - ``algorithms.minimum_eigensolvers.diagonal_estimator._DiagonalEstimator``
+     -
 
-       Example:
         .. code-block:: python
 
             from qiskit import QuantumCircuit
@@ -346,7 +373,6 @@ This functionality can now be found in the estimator primitive.
             estimator = CVaREstimator(sampler=Sampler(), aggregation=0.2)
             cvar = estimator.run(state, observable).result().values
      -
-
 
 **GRADIENTS**
 --------------
