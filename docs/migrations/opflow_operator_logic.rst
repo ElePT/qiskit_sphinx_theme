@@ -2,10 +2,12 @@
 Migrating Operator Logic from Opflow
 ======================================
 
-qiskit.opflow -> qiskit.quantum_info
-====================================
+The opflow module was introduced as a layer between circuits and algorithms that provided
+the language and computational primitives for Quantum Algorithms and Applications research and
+development using Qiskit.
 
-Provide context for opflow operator logic.
+It contained two main submodules: Operators and Converters. The first one provided the tools
+
 
 Opflow modules covered in this guide
 
@@ -40,9 +42,6 @@ Do we want to include utilities and mixins? they are documented in principle. We
 
 **OPERATOR GLOBALS**
 --------------------
-
-Below is a table of example access patterns in :obj:`~qiskit.opflow` and the alternative
-with :obj:`~qiskit.quantum_info`:
 
 .. list-table:: Migration of ``qiskit.opflow.operator_globals (1/3)``
    :header-rows: 1
@@ -100,8 +99,15 @@ with :obj:`~qiskit.quantum_info`:
             from qiskit.quantum_info import Clifford
             qc = QuantumCircuit(1)
             qc.h(0)
+            qc.h(0)
             op = Clifford(qc).to_operator()
+
+            # or
+            qc = QuantumCircuit(1)
+            qc.h(0)
+            H = Clifford(qc).to_operator()
             op = H ^ H
+
      -
 
 .. list-table:: Migration of ``qiskit.opflow.operator_globals (3/3)``
@@ -119,17 +125,17 @@ with :obj:`~qiskit.quantum_info`:
             from qiskit.opflow import Zero, One
             op = Zero ^ One
 
-     - Construct corresponding state in QuantumCircuit + ``quantum_info.Clifford`` + ``to_operator()``
+     - ``quantum_info.Statevector``
 
        Example:
         .. code-block:: python
 
             from qiskit import QuantumCircuit
-            from qiskit.quantum_info import Clifford
+            from qiskit.quantum_info import Statevector
             qc = QuantumCircuit(1)
-            zero = Clifford(qc).to_operator()
+            zero = Statevector(qc)
             qc.x(0)
-            one = Clifford(qc).to_operator()
+            one = Statevector(qc)
             op = zero ^ one
      -
 
@@ -147,13 +153,19 @@ with :obj:`~qiskit.quantum_info`:
 **LIST OPS**
 ------------
 
-- ListOp --> quantum info PauliList
+No direct replacement for these. In opflow you could patch different types of operators together,
+but in quantum info they are directly combined.
+
+- ListOp
 - ComposedOp
-- SummedOp -> quantum_info SparsePauliOp
-- TensoredOp -> ?
+- SummedOp
+- TensoredOp
 
 **STATE FNs**
 -------------
+
+Generally replaced by ``quantum_info.QuantumState``, but they are structured differently:
+there’s the Statevector (VectorStateFn) and StabilizerState (Clifford based vector).
 
 - StateFn
 - CircuitStateFn
@@ -161,7 +173,7 @@ with :obj:`~qiskit.quantum_info`:
 - VectorStateFn
 - SparseVectorStateFn
 - OperatorStateFn
-- CVaRMeasurement
+- CVaRMeasurement --> Functionality replaced by DiagonalEstimator
 
 **CONVERTERS**
 --------------
@@ -241,15 +253,17 @@ In this module you can find:
 
 - EvolutionFactory -> no replacement
 - EvolvedOp -> no replacement
-- MatrixEvolution -> no replacement
-- PauliTrotterEvolution -> time evolvers Trotter?
+- MatrixEvolution -> HamiltonianGate
+- PauliTrotterEvolution -> PauliEvolutionGate
 
 **Trotterizations:**
 
+Trotterizations are replaced by the synthesis methods in qiskit.synthesis.evolutions (QDrift not ported yet).
+
 - TrotterizationFactory
-- Trotter --> time evolvers Trotter
-- Suziki --> Do we have replacement?
-- QDrift --> Do we have replacement?
+- Trotter
+- Suziki
+- QDrift
 
 **EXPECTATIONS**
 ----------------
