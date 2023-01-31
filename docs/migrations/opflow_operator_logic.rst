@@ -2,14 +2,39 @@
 Migrating Operator Logic from Opflow
 ======================================
 
-The opflow module was introduced as a layer between circuits and algorithms that provided
-the language and computational primitives for Quantum Algorithms and Applications research and
-development using Qiskit.
+The ``qiskit.opflow`` module was introduced as a layer between circuits and algorithms that presented a series of
+useful tools for quantum algorithms research and development. The core design of opflow was based on
+the assumption that the only point of access to backends (real devices or
+simulators, local or remote) was through a ``backend.run()`` type of method, which took in a circuit and returned the
+measurement results; thus, all of the tasks related to building expectation value computations were left to the user
+to manage. Opflow helped bridge that gap, it allowed to wrap circuits and observables into operator classes that
+could be algebraically manipulated, so that the final result's expectation values could be easily computed following
+different methods.
 
-It contained two main submodules: Operators and Converters. The first one provided the tools
+This basic opflow functionality was covered by  its core submodules: the ``operators`` submodule
+(including operator globals, list ops, primitive ops, and state functions), the ``converters`` submodule, and
+the ``expectations`` submodule.
+Following this reference framework of ``operators``, ``converters`` and ``expectations``, opflow added more
+algorithm-specific functionality, such as that provided by the ``evolutions`` submodule (specific for Hamiltonian
+Simulation algorithms), as well as the ``gradients`` submodule (applied in multiple machine learning and optimization
+use-cases). Some classes from the core modules mentioned above are also algorithm or application-specific,
+for example the ``CVarMeasurement`` or the ``Z2Symmetries``.
 
+The recent introduction of the ``qiskit.primitives`` challenged the assumptions upon which Opflow was designed. In particular,
+the ``Estimator`` primitive provides the algorithmic abstraction to easily obtain expectation values from a series of
+circuit-observable pairs, rendering the ``expectations`` submodule obsolete, and leaving most of the components in ``converters``
+and ``operators`` without a clear purpose. The incorporation of primitives also motivated the development of a new gradient
+framework that could leverage their interface, as well as new time evolution algorithms. The new code is leaner
+and avoids certain performance bottlenecks that were introduced by the opflow design.
 
-Opflow modules covered in this guide
+All of these reasons have encouraged us to move away from opflow, and find new paths of developing algorithms based on
+the ``qiskit.primitives`` interface and the ``qiskit.quantum_info`` module, which is a powerful tool for representing
+and manipulating quantum operators.
+
+This guide traverses all of the opflow submodules and provides alternatives for each of them, be them a direct alternative
+(i.e. using ``quantum_info``) or an explanation of the new way of doing things.
+
+Opflow modules covered in this guide.
 
 - Operator Base Class
 - Operator Globals [Done]
@@ -274,14 +299,13 @@ Trotterizations are replaced by the synthesis methods in qiskit.synthesis.evolut
 
 **EXPECTATIONS**
 ----------------
-Replaced by estimator primitive.
+Expectations are converters which enable the computation of the expectation value of an observable with respect to some state function.
+This functionality can now be found in the estimator primitive.
 
-In this module you can find:
-
-- ExpectationFactory
-- AerPauliExpectation
-- MatrixExpectation
-- PauliExpectation
+- ExpectationFactory: A factory class for convenient automatic selection of an Expectation based on the Operator to be converted and backend used to sample the expectation value.
+- AerPauliExpectation: An Expectation converter for using Aer's operator snapshot to take expectations of quantum state circuits over Pauli observables.
+- MatrixExpectation: An Expectation converter which converts Operator measurements to be matrix-based so they can be evaluated by matrix multiplication.
+- PauliExpectation: An Expectation converter for Pauli-basis observables by changing Pauli measurements to a diagonal ({Z, I}^n) basis and appending circuit post-rotations to the measured state function.
 - CVaRExpectation -> Replaced by DiagonalEstimator.
 
 .. list-table:: Migration of ``qiskit.opflow.expectations.CVaRExpectation``
