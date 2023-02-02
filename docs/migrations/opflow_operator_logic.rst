@@ -25,6 +25,8 @@ simulation algorithms), as well as the ``gradients`` submodule (applied in multi
 use-cases). Some classes from the core modules mentioned above are also algorithm or application-specific,
 for example the ``CVarMeasurement`` or the ``Z2Symmetries``.
 
+..  With the introduction of the primitives we have a new mechanism that allows.... efficient... error mitigation...
+
 The recent introduction of the ``qiskit.primitives`` challenged the assumptions upon which opflow was designed. In particular,
 the ``Estimator`` primitive provides the algorithmic abstraction to easily obtain expectation values from a series of
 circuit-observable pairs, superseding most of the functionality of the ``expectations`` submodule. Without the need of
@@ -158,12 +160,12 @@ Common non-parametrized gates (Clifford)
 
             from qiskit import QuantumCircuit
             from qiskit.quantum_info import Clifford
-            qc = QuantumCircuit(1)
+            qc = QuantumCircuit(2)
             qc.h(0)
-            qc.h(0)
+            qc.h(1)
             op = Clifford(qc).to_operator()
 
-            # or
+            # or... would this work?
             qc = QuantumCircuit(1)
             qc.h(0)
             H = Clifford(qc).to_operator()
@@ -223,13 +225,13 @@ TODO: Add examples!!!
      - notes
 
    * - ``opflow.PrimitiveOp``
-     - ``quantum_info.Operator``
+     - No replacement needed. Can directly use ``quantum_info.Operator``
      -
    * - ``opflow.CircuitOp``
-     - No replacement needed. Can directly use ``QuantumCircuit``.
+     - No replacement needed. Can directly use ``QuantumCircuit``
      -
    * - ``opflow.MatrixOp``
-     - No replacement needed. Can directly use ``quantum_info.Operator``.
+     - ``quantum_info.Operator``
      -
    * - ``opflow.PauliOp``
      - ``quantum_info.Pauli``
@@ -238,10 +240,10 @@ TODO: Add examples!!!
      - ``quantum_info.SparsePauliOp``
      -
    * - ``opflow.TaperedPauliSumOp``
-     - This functionality was designed for Nature-specific use cases, and is now taken care of within ``qiskit-nature``.
+     - This functionality was designed for Nature-specific use cases, and is now taken care of within ``qiskit-nature``
      -
    * - ``opflow.Z2Symmetries``
-     - This functionality was migrated to ``quantum_info.Z2Symmetries``.
+     - This functionality was migrated to ``quantum_info.Z2Symmetries``
      -
 
 ListOps
@@ -473,33 +475,41 @@ This functionality can now be found in the estimator primitive.
      - notes
 
    * - ``opflow.expectations.CVaRExpectation``
-     - ``algorithms.minimum_eigensolvers.diagonal_estimator._DiagonalEstimator``
+     - Functionality absorbed into corresponding VQE algorithm: ``qiskit.algorithms.minimum_eigensolvers.SamplingVQE``
      -
    * -
 
         .. code-block:: python
 
-            from qiskit.opflow import Z, Plus, StateFn, CVaRExpectation
+            from qiskit.opflow import CVaRExpectation, PauliSumOp
 
-            state = Plus
-            observable = StateFn(Z)
-            op = ~observable @ state
-            cvar_expecation = CVaRExpectation(alpha=0.2)
-            cvar = cvar_expecation.convert(op).eval()
+            from qiskit.algorithms import VQE
+            from qiskit.algorithms.optimizers import SLSQP
+            from qiskit.circuit.library import TwoLocal
+            from qiskit_aer import AerSimulator
+            backend = AerSimulator()
+            ansatz = TwoLocal(2, 'ry', 'cz')
+            op = PauliSumOp.from_list([('ZZ',1), ('IZ',1), ('II',1)])
+            cvar_expectation = CVaRExpectation(alpha=0.2)
+            opt = SLSQP(maxiter=1000)
+            vqe = VQE(ansatz, expectation=cvar_expectation, optimizer=opt, quantum_instance=backend)
+            result = vqe.compute_minimum_eigenvalue(op)
+
      -
 
         .. code-block:: python
 
-            from qiskit import QuantumCircuit
-            from qiskit.primitives import Sampler
-            from qiskit.algorithms.minimum_eigensolvers.diagonal_estimator import _DiagonalEstimator as CVaREstimator
+            from qiskit.quantum_info import SparsePauliOp
 
-            state = QuantumCircuit(1)
-            state.h(0)
-            state.measure_all() # add measurements
-            observable = SparsePauliOp('Z')
-            estimator = CVaREstimator(sampler=Sampler(), aggregation=0.2)
-            cvar = estimator.run(state, observable).result().values
+            from qiskit.algorithms.minimum_eigensolvers import SamplingVQE
+            from qiskit.algorithms.optimizers import SLSQP
+            from qiskit.circuit.library import TwoLocal
+            from qiskit.primitives import Sampler
+            ansatz = TwoLocal(2, 'ry', 'cz')
+            op = SparsePauliOp.from_list([('ZZ',1), ('IZ',1), ('II',1)])
+            opt = SLSQP(maxiter=1000)
+            vqe = SamplingVQE(Sampler(), ansatz, opt)
+            result = vqe.compute_minimum_eigenvalue(op)
      -
 
 **Gradients**
