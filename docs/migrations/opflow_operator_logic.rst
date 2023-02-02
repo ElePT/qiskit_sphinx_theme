@@ -492,7 +492,8 @@ This functionality can now be found in the estimator primitive.
             op = PauliSumOp.from_list([('ZZ',1), ('IZ',1), ('II',1)])
             cvar_expectation = CVaRExpectation(alpha=0.2)
             opt = SLSQP(maxiter=1000)
-            vqe = VQE(ansatz, expectation=cvar_expectation, optimizer=opt, quantum_instance=backend)
+            vqe = VQE(ansatz, expectation=cvar_expectation,
+                      optimizer=opt, quantum_instance=backend)
             result = vqe.compute_minimum_eigenvalue(op)
 
      -
