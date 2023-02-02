@@ -358,8 +358,8 @@ Circuit Sampler
      - alternative
      - notes
 
-   * - ``CircuitSampler``
-     - ``qiskit.primitives.Estimator``
+   * - ``opflow.CircuitSampler``
+     - ``primitives.Estimator``
      -
 
    * -
@@ -436,36 +436,157 @@ Other Converters
 Evolutions
 ----------
 
-The Evolutions are building blocks for hamiltonian simulation algorithms, including various methods for trotterization.
+The ``evolutions`` sub-module was created to provide building blocks for hamiltonian simulation algorithms,
+including various methods for trotterization.
 
-In this module you can find:
+The ``opflow.PauliTrotterEvolution`` class computes evolutions for exponentiated sums of Paulis by changing them each to the
+Z basis, rotating with an RZ, changing back, and trotterizing following the desired scheme. Within its ``.convert`` method,
+the class follows a recursive strategy that involves creating ``opflow.EvolvedOp`` placeholders for the operators,
+constructing ``PauliEvolutionGate``\s out of the operator primitives and supplying one of the desired synthesis methods to
+perform the trotterization (either via a ``string``\, which is then inputted into a ``opflow.TrotterizationFactory``,
+or by supplying a method instance of ``opflow.Trotter()``, ``opflow.Suzuki()`` or ``opflow.QDrift()``).
 
-**Evolutions:**
+The different trotterization methods that extend ``opflow.TrotterizationBase`` were migrated (motivation?) to ``qiskit.synthesis``,
+and now extend the ``synthesis.evolution.ProductFormula`` base class. They no longer contain a ``.convert()`` method for standalone use,
+but now are designed to be plugged into the ``synthesis.PauliEvolutionGate`` and called via ``.synthesize()``.
+In this context, the job of the ``opflow.PauliTrotterEvolution`` class can now be handled directly by the algorithms
+(for example, ``algorithms.time_evolvers.TrotterQRTE``\), by constructing the evolution gate and synthesizing it (?),
+as shown in the following example:
 
-- EvolutionFactory -> no replacement
-- EvolvedOp -> no replacement
-- MatrixEvolution -> HamiltonianGate
-- PauliTrotterEvolution -> PauliEvolutionGate
+.. list-table:: Migration of ``qiskit.opflow.evolutions (1/2)``
+   :header-rows: 1
 
-**Trotterizations:**
+   * - opflow
+     - alternative
 
-Trotterizations are replaced by the synthesis methods in qiskit.synthesis.evolutions (QDrift not ported yet).
+   * -
 
-- TrotterizationFactory
-- Trotter
-- Suziki
-- QDrift
+        .. code-block:: python
+
+            from qiskit.opflow import Trotter, PauliTrotterEvolution, PauliSumOp
+
+            hamiltonian = PauliSumOp.from_list([('X', 1), ('Z',1)])
+            evolution = PauliTrotterEvolution(trotter_mode=Trotter(), reps=1)
+            evol_result = evolution.convert(hamiltonian.exp_i())
+            evolved_state = result.to_circuit()
+     -
+
+        .. code-block:: python
+
+            from qiskit.quantum_info import SparsePauliOp
+            from qiskit.synthesis import SuzukiTrotter
+            from qiskit.circuit.library import PauliEvolutionGate
+            from qiskit import QuantumCircuit
+
+            hamiltonian = SparsePauliOp.from_list([('X', 1), ('Z',1)])
+            evol_gate = PauliEvolutionGate(hamiltonian, 1, synthesis=SuzukiTrotter())
+            evolved_state = QuantumCircuit(1)
+            evolved_state.append(evol_gate, [0])
+
+In a similar manner, the ``opflow.MatrixEvolution`` class performs evolution by classical matrix exponentiation,
+constructing a circuit with ``UnitaryGate``\s or ``HamiltonianGate``\s containing the exponentiation of the operator.
+This class is no longer necessary, as the ``HamiltonianGate``\s can be directly handled by the algorithms.
+
+.. list-table:: Migration of ``qiskit.opflow.evolutions (1/2)``
+   :header-rows: 1
+
+   * - opflow
+     - alternative
+
+   * -
+
+        .. code-block:: python
+
+            from qiskit.opflow import MatrixEvolution, PauliSumOp
+
+            hamiltonian = PauliSumOp.from_list([('X', 1), ('Z',1)])
+            evolution = MatrixEvolution()
+            evol_result = evolution.convert(hamiltonian)
+            evolved_state = result.to_circuit()
+     -
+
+        .. code-block:: python
+
+            from qiskit.quantum_info import SparsePauliOp
+            from qiskit.extensions import HamiltonianGate
+            from qiskit import QuantumCircuit
+
+            hamiltonian = SparsePauliOp.from_list([('X', 1), ('Z',1)])
+            evol_gate = HamiltonianGate(hamiltonian, 1)
+            evolved_state = QuantumCircuit(1)
+            evolved_state.append(evol_gate, [0])
+
+To summarize:
+
+.. list-table:: Migration of ``qiskit.opflow.evolutions.trotterizations``
+   :header-rows: 1
+
+   * - opflow
+     - alternative
+     - notes
+
+   * - ``opflow.TrotterizationFactory``
+     - This class is no longer necessary.
+     -
+   * - ``opflow.Trotter``
+     - ``synthesis.SuzukiTrotter``
+     - This class implemented the Trotter-Suzuki product formula, but the ``synthesis`` module also offers a ``synthesis.LieTrotter`` class
+   * - ``opflow.Suzuki``
+     - ``synthesis.SuzukiTrotter(reps=1)``
+     -
+   * - ``opflow.QDrift``
+     - ``synthesis.QDrift``
+     -
+
+.. list-table:: Migration of ``qiskit.opflow.evolutions.evolutions``
+   :header-rows: 1
+
+   * - opflow
+     - alternative
+     - notes
+
+   * - ``opflow.EvolutionFactory``
+     - This class is no longer necessary.
+     -
+   * - ``opflow.EvolvedOp``
+     - ``synthesis.SuzukiTrotter``
+     - This class is no longer necessary.
+   * - ``opflow.MatrixEvolution``
+     - ``HamiltonianGate``
+     -
+   * - ``opflow.PauliTrotterEvolution``
+     - ``PauliEvolutionGate``
+     -
 
 Expectations
 ------------
 Expectations are converters which enable the computation of the expectation value of an observable with respect to some state function.
 This functionality can now be found in the estimator primitive.
 
-- ExpectationFactory: A factory class for convenient automatic selection of an Expectation based on the Operator to be converted and backend used to sample the expectation value.
-- AerPauliExpectation: An Expectation converter for using Aer's operator snapshot to take expectations of quantum state circuits over Pauli observables.
-- MatrixExpectation: An Expectation converter which converts Operator measurements to be matrix-based so they can be evaluated by matrix multiplication.
-- PauliExpectation: An Expectation converter for Pauli-basis observables by changing Pauli measurements to a diagonal ({Z, I}^n) basis and appending circuit post-rotations to the measured state function.
-- CVaRExpectation -> Replaced by DiagonalEstimator.
+Algorithm-Agnostic Expectations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. list-table:: Migration of ``qiskit.opflow.expectations``
+   :header-rows: 1
+
+   * - opflow
+     - alternative
+     - notes
+   * - ``opflow.ExpectationFactory``
+     - No replacement needed.
+     - A factory class for automatic selection of an Expectation based on the Operator to be converted and backend used to sample the expectation value.
+   * - ``opflow.AerPauliExpectation``
+     - No replacement needed. Use ``Estimator`` primitive from ``qiskit_aer`` instead.
+     - An Expectation converter for using Aer's operator snapshot to take expectations of quantum state circuits over Pauli observables.
+   * - ``opflow.MatrixExpectation``
+     - No replacement needed. Use ``Estimator`` primitive from ``qiskit`` instead (uses Statevector).
+     - An Expectation converter which converts Operator measurements to be matrix-based so they can be evaluated by matrix multiplication.
+   * - ``opflow.PauliExpectation``
+     - No replacement needed. Use ``Estimator`` primitive from ``qiskit`` (uses Statevector) or ``qiskit_ibm_runtime`` instead.
+     - An Expectation converter for Pauli-basis observables by changing Pauli measurements to a diagonal ({Z, I}^n) basis and appending circuit post-rotations to the measured state function.
+
+CVarExpectation
+~~~~~~~~~~~~~~~
 
 .. list-table:: Migration of ``qiskit.opflow.expectations.CVaRExpectation``
    :header-rows: 1
@@ -492,8 +613,7 @@ This functionality can now be found in the estimator primitive.
             op = PauliSumOp.from_list([('ZZ',1), ('IZ',1), ('II',1)])
             cvar_expectation = CVaRExpectation(alpha=0.2)
             opt = SLSQP(maxiter=1000)
-            vqe = VQE(ansatz, expectation=cvar_expectation,
-                      optimizer=opt, quantum_instance=backend)
+            vqe = VQE(ansatz, expectation=cvar_expectation, optimizer=opt, quantum_instance=backend)
             result = vqe.compute_minimum_eigenvalue(op)
 
      -
