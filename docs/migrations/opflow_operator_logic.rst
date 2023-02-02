@@ -27,11 +27,12 @@ for example the ``CVarMeasurement`` or the ``Z2Symmetries``.
 
 ..  With the introduction of the primitives we have a new mechanism that allows.... efficient... error mitigation...
 
-The recent introduction of the ``qiskit.primitives`` challenged the assumptions upon which opflow was designed. In particular,
-the ``Estimator`` primitive provides the algorithmic abstraction to easily obtain expectation values from a series of
-circuit-observable pairs, superseding most of the functionality of the ``expectations`` submodule. Without the need of
-building opflow expectations, most of the components in ``operators`` also became redundant, as they
-commonly wrapped elements from ``qiskit.quantum_info``.
+With the introduction of the ``qiskit.primitives``, we have a new improved interface that extends ``backend.run()``,
+allowing to efficiently run circuits while handling tasks for the user, such as transpilation, parameter
+binding, operator manipulation, and more. In particular, the ``Estimator`` primitive provides the
+algorithmic abstraction to easily obtain expectation values from a series of circuit-observable pairs, superseding
+most of the functionality of the ``expectations`` submodule. Without the need of building opflow expectations,
+most of the components in ``operators`` also became redundant, as they commonly wrapped elements from ``qiskit.quantum_info``.
 
 In addition to this, the introduction of the qiskit primitives motivated the development of a new gradient framework that
 could leverage their interface, as well as new time evolution algorithms. The new code is leaner
@@ -46,7 +47,7 @@ This guide traverses the opflow submodules and provides either a direct alternat
 
 TL;DR
 -----
-The assumptions based on which ``qiskit.opflow`` was written are no longer up-to-date. Thus, it is being deprecated.
+The new ``qiskit.primitives`` have superseded most of the ``qiskit.opflow`` functionality. Thus, it is being deprecated.
 
 Index
 -----
@@ -209,7 +210,7 @@ Common non-parametrized gates (Clifford)
 
 Primitive and List Ops
 ----------------------
-Most of the workflows that previously relied in components from `opflow.primitive_ops` and `opflow.list_ops` can now
+Most of the workflows that previously relied in components from ``opflow.primitive_ops`` and ``opflow.list_ops`` can now
 leverage ``quantum_info.operators`` elements instead. Some of these classes don't require a 1-1 replacement because
 they were created to interface with other opflow components.
 
@@ -280,8 +281,7 @@ This module can be generally replaced by ``quantum_info.QuantumState``, with som
 2. The equivalence is, once again, not 1-1.
 3. Algorithm-specific functionality has been migrated to the respective algorithm's module
 
-Algorithm-agnostic State Functions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. list-table:: Migration of ``qiskit.opflow.state_fns``
    :header-rows: 1
 
@@ -312,41 +312,14 @@ Algorithm-agnostic State Functions
    * - ``opflow.OperatorStateFn``
      - No replacement needed. This classed was used internally within opflow.
      -
-
-CVaRMeasurement
-~~~~~~~~~~~~~~~
-
-.. list-table:: Migration of ``qiskit.opflow.CVaRMeasurement``
-   :header-rows: 1
-
-   * - opflow
-     - alternative
-     - notes
-
-   * - ``qiskit.opflow.CVaRMeasurement``
-     - Functionality replaced by ``_DiagonalEstimator`` in ``minimum_eigensolvers``.
-     - Used in :class:`~qiskit.opflow.CVaRExpectation`. See example in expectations.
-
-   * -
-
-        .. code-block:: python
-
-            from qiskit.opflow import CVaRMeasurement
-            # TODO
+   * - ``opflow.CVaRMeasurement``
+     - Used in :class:`~qiskit.opflow.CVaRExpectation`. Functionality now covered by ``SamplingEstimator``. See example in expectations.
      -
-
-        .. code-block:: python
-
-            from qiskit import QuantumCircuit
-            # TODO
-
-     -
-
 
 Converters
 ----------
 
-manipulate operators within opflow. Most are no longer necessary when using primitives.
+They manipulate operators within opflow. Most are no longer necessary when using primitives.
 
 Circuit Sampler
 ~~~~~~~~~~~~~~~
