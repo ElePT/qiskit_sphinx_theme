@@ -215,7 +215,6 @@ they were created to interface with other opflow components.
 
 PrimitiveOps
 ~~~~~~~~~~~~~~
-TODO: Add examples!!!
 
 .. list-table:: Migration of ``qiskit.opflow.primitive_ops``
    :header-rows: 1
@@ -432,10 +431,9 @@ Two Qubit Reduction
      - alternative
      - notes
 
-   * - ``TwoQubitReduction``
-
-     - ``???``
-
+   * -  ``TwoQubitReduction``
+     -  The mapper classes in ``qiskit-nature`` apply the two qubit reduction to the operator using the
+        ``Z2Symmetries`` class.
      -
 
 Other Converters
