@@ -83,7 +83,7 @@ mind that ``quantum_info.BaseOperator`` is more generic than its opflow counterp
 1. ``opflow.OperatorBase`` implements a broader algebra mixin. Some operator overloads are not available in
 ``quantum_info.BaseOperator``.
 
-2. The ``opflow.OperatorBase`` implements methods such as ``to_matrix()`` or ``to_spmatrix()``, which are only implemented
+2. ``opflow.OperatorBase`` also implements methods such as ``to_matrix()`` or ``to_spmatrix()``, which are only found
 in some of the ``quantum_info.BaseOperator`` subclasses.
 
 .. list-table:: Migration of ``qiskit.opflow.operator_base``
@@ -94,7 +94,7 @@ in some of the ``quantum_info.BaseOperator`` subclasses.
      - notes
    * - ``opflow.OperatorBase``
      - ``quantum_info.BaseOperator``
-     - For more information, check ``quantum_info.BaseOperator`` source code.
+     - For more information, check the ``quantum_info.BaseOperator`` source code.
 
 Operator Globals
 ----------------
@@ -225,11 +225,11 @@ TODO: Add examples!!!
      - notes
 
    * - ``opflow.PrimitiveOp``
-     - No replacement needed. Can directly use ``quantum_info.Operator``
-     -
+     - No replacement needed
+     - Can directly use ``quantum_info.Operator``
    * - ``opflow.CircuitOp``
-     - No replacement needed. Can directly use ``QuantumCircuit``
-     -
+     - No replacement needed
+     - Can directly use ``QuantumCircuit``
    * - ``opflow.MatrixOp``
      - ``quantum_info.Operator``
      -
@@ -240,10 +240,63 @@ TODO: Add examples!!!
      - ``quantum_info.SparsePauliOp``
      -
    * - ``opflow.TaperedPauliSumOp``
-     - This functionality was designed for Nature-specific use cases, and is now taken care of within ``qiskit-nature``
+     - This class combines the operator with its identified symmetries in one object, and with the refactoring of ``Z2Symmetries`` is no longer necessary
      -
    * - ``opflow.Z2Symmetries``
-     - This functionality was migrated to ``quantum_info.Z2Symmetries``
+     - ``quantum_info.Z2Symmetries``
+     - This class was refactored to also replace ``TaperedPauliSumOp``
+
+PrimitiveOps Examples
+~~~~~~~~~~~~~~~~~~~~~
+
+.. list-table:: Migration of ``qiskit.opflow.Z2Symmetries``
+   :header-rows: 1
+
+   * - opflow
+     - alternative
+     - notes
+
+   * -
+
+        .. code-block:: python
+
+            from qiskit.opflow import PuliSumOp, Z2Symmetries, TaperedPauliSumOp
+
+            qubit_op = PauliSumOp.from_list(
+                [
+                ("II", -1.0537076071291125),
+                ("IZ", 0.393983679438514),
+                ("ZI", -0.39398367943851387),
+                ("ZZ", -0.01123658523318205),
+                ("XX", 0.1812888082114961),
+                ]
+            )
+            z2_symmetries = Z2Symmetries.find_Z2_symmetries(qubit_op)
+            primitive = SparsePauliOp.from_list(
+                [
+                ("I", -1.0424710218959303),
+                ("Z", -0.7879673588770277),
+                ("X", -0.18128880821149604),
+                ]
+            )
+            tapered_op = TaperedPauliSumOp(primitive, z2_symmetries)
+     -
+
+        .. code-block:: python
+
+            from qiskit.quantum_info import SparsePauliOp, Z2Symmetries
+
+            qubit_op = SparsePauliOp.from_list(
+                [
+                    ("II", -1.0537076071291125),
+                    ("IZ", 0.393983679438514),
+                    ("ZI", -0.39398367943851387),
+                    ("ZZ", -0.01123658523318205),
+                    ("XX", 0.1812888082114961),
+                ]
+            )
+            z2_symmetries = Z2Symmetries.find_z2_symmetries(qubit_op)
+            tapered_op = z2_symmetries.taper(qubit_op)[1]
      -
 
 ListOps
