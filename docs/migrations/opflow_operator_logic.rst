@@ -9,17 +9,17 @@ Background
 
 The ``qiskit.opflow`` module was originally introduced as a layer between circuits and algorithms, a series of building blocks
 for quantum algorithms research and development. The core design of opflow was based on the assumption that the
-point of access to backends (be they real devices or simulators, local or remote) was through a ``backend.run()``
+point of access to backends (be they real devices or simulators) was a ``backend.run()``
 type of method: a method that takes in a circuit and returns its measurement results.
-Under this assumption, all the tasks related to building expectation value
+Under this assumption, all the tasks related to operator handling and building expectation value
 computations were left to the user to manage. Opflow helped bridge that gap, it allowed to wrap circuits and
 observables into operator classes that could be algebraically manipulated, so that the final result's expectation
 values could be easily computed following different methods.
 
-This basic opflow functionality was covered by  its core submodules: the ``operators`` submodule
+This basic opflow functionality is covered by  its core submodules: the ``operators`` submodule
 (including operator globals, list ops, primitive ops, and state functions), the ``converters`` submodule, and
 the ``expectations`` submodule.
-Following this reference framework of ``operators``, ``converters`` and ``expectations``, opflow added more
+Following this reference framework of ``operators``, ``converters`` and ``expectations``, opflow includes more
 algorithm-specific functionality, which can be found in the ``evolutions`` submodule (specific for hamiltonian
 simulation algorithms), as well as the ``gradients`` submodule (applied in multiple machine learning and optimization
 use-cases). Some classes from the core modules mentioned above are also algorithm or application-specific,
@@ -27,27 +27,30 @@ for example the ``CVarMeasurement`` or the ``Z2Symmetries``.
 
 ..  With the introduction of the primitives we have a new mechanism that allows.... efficient... error mitigation...
 
-With the introduction of the ``qiskit.primitives``, we have a new improved interface that extends ``backend.run()``,
-allowing to efficiently run circuits while handling tasks for the user, such as transpilation, parameter
-binding, operator manipulation, and more. In particular, the ``Estimator`` primitive provides the
-algorithmic abstraction to easily obtain expectation values from a series of circuit-observable pairs, superseding
-most of the functionality of the ``expectations`` submodule. Without the need of building opflow expectations,
-most of the components in ``operators`` also became redundant, as they commonly wrapped elements from ``qiskit.quantum_info``.
+The recent introduction of the ``qiskit.primitives`` provided a new interface for interacting with backends. Now, instead of
+preparing a circuit to execute with a ``backend.run()`` type of method, the algorithms can leverage the ``Sampler`` and
+``Estimator`` primitives, send parametrized circuits and observables, and directly receive quasi-probability distributions or
+expectation values (respectively). This workflow simplifies considerably the pre-processing and post-processing steps
+that previously relied on opflow. For example, the ``Estimator`` primitive returns expectation values from a series of
+circuit-observable pairs, superseding most of the functionality of the ``expectations`` submodule. Without the need of
+building opflow expectations, most of the components in ``operators`` also became redundant, as they commonly wrapped
+elements from ``qiskit.quantum_info``.
 
-In addition to this, the introduction of the qiskit primitives motivated the development of a new gradient framework that
-could leverage their interface, as well as new time evolution algorithms. The new code is leaner
-and avoids certain performance bottlenecks that were introduced by the opflow design.
+Higher-level opflow sub-modules, such as the ``gradients`` sub-module, were refactored to take full advantage
+of the primitives interface. They can now be accessed as part of the ``qiskit.algorithms`` module,
+together with other primitive-based subroutines. Similarly, the ``evolutions`` sub-module got refactored, and now
+can be easily integrated into a primitives-based workflow (as seen in the new ``time_evolvers`` algorithms).
 
 All of these reasons have encouraged us to move away from opflow, and find new paths of developing algorithms based on
 the ``qiskit.primitives`` interface and the ``qiskit.quantum_info`` module, which is a powerful tool for representing
 and manipulating quantum operators.
 
 This guide traverses the opflow submodules and provides either a direct alternative
-(i.e. using ``quantum_info``), or an explanation of the new way of doing things.
+(i.e. using ``quantum_info``), or an explanation of how to replace their functionality in algorithms.
 
 TL;DR
 -----
-The new ``qiskit.primitives`` have superseded most of the ``qiskit.opflow`` functionality. Thus, it is being deprecated.
+The new ``qiskit.primitives`` have superseded most of the ``qiskit.opflow`` functionality. Thus, the latter is being deprecated.
 
 Index
 -----
@@ -74,16 +77,14 @@ This guide covers the migration from these opflow sub-modules:
 Operator Base Class
 -------------------
 
-The ``opflow.OperatorBase`` abstract class can generally be replaced with ``quantum_info.BaseOperator``, but this
-is not an exact 1-1 relation. For type-hinting/type-checking purposes, you should keep in mind that ``quantum_info.BaseOperator``
-is more generic than its opflow counterpart. In particular, you should consider that:
+The ``opflow.OperatorBase`` abstract class can generally be replaced with ``quantum_info.BaseOperator``, keeping in
+mind that ``quantum_info.BaseOperator`` is more generic than its opflow counterpart. In particular, you should consider that:
 
-1. ``opflow.OperatorBase`` implements a broader algebra mixin, it overloads operators such as ``~`` (adjoint/inverse)
-or the ``tensorpower`` operation ``^``, where  ``operator^int`` tensors ``operator`` with itself ``int`` times.
+1. ``opflow.OperatorBase`` implements a broader algebra mixin. Some operator overloads are not available in
+``quantum_info.BaseOperator``.
 
-
-2. All ``opflow.OperatorBase`` subclasses contain methods such as ``to_matrix()`` or ``to_spmatrix()``, which are only
-implemented in some of the ``quantum_info.BaseOperator`` subclasses.
+2. The ``opflow.OperatorBase`` implements methods such as ``to_matrix()`` or ``to_spmatrix()``, which are only implemented
+in some of the ``quantum_info.BaseOperator`` subclasses.
 
 .. list-table:: Migration of ``qiskit.opflow.operator_base``
    :header-rows: 1
@@ -92,10 +93,8 @@ implemented in some of the ``quantum_info.BaseOperator`` subclasses.
      - alternative
      - notes
    * - ``opflow.OperatorBase``
-
      - ``quantum_info.BaseOperator``
-
-     - Opflow side: StarAlgebraMixin, TensorMixin. QI side: GroupMixin
+     - For more information, check ``quantum_info.BaseOperator`` source code.
 
 Operator Globals
 ----------------
@@ -410,8 +409,7 @@ Evolutions
 ----------
 
 The ``evolutions`` sub-module was created to provide building blocks for hamiltonian simulation algorithms,
-including various methods for trotterization.
-
+including various methods for trotterization. This module is divided
 The ``opflow.PauliTrotterEvolution`` class computes evolutions for exponentiated sums of Paulis by changing them each to the
 Z basis, rotating with an RZ, changing back, and trotterizing following the desired scheme. Within its ``.convert`` method,
 the class follows a recursive strategy that involves creating ``opflow.EvolvedOp`` placeholders for the operators,
@@ -441,7 +439,7 @@ as shown in the following example:
             hamiltonian = PauliSumOp.from_list([('X', 1), ('Z',1)])
             evolution = PauliTrotterEvolution(trotter_mode=Trotter(), reps=1)
             evol_result = evolution.convert(hamiltonian.exp_i())
-            evolved_state = result.to_circuit()
+            evolved_state = evol_result.to_circuit()
      -
 
         .. code-block:: python
@@ -460,7 +458,7 @@ In a similar manner, the ``opflow.MatrixEvolution`` class performs evolution by 
 constructing a circuit with ``UnitaryGate``\s or ``HamiltonianGate``\s containing the exponentiation of the operator.
 This class is no longer necessary, as the ``HamiltonianGate``\s can be directly handled by the algorithms.
 
-.. list-table:: Migration of ``qiskit.opflow.evolutions (1/2)``
+.. list-table:: Migration of ``qiskit.opflow.evolutions (2/2)``
    :header-rows: 1
 
    * - opflow
@@ -470,12 +468,12 @@ This class is no longer necessary, as the ``HamiltonianGate``\s can be directly 
 
         .. code-block:: python
 
-            from qiskit.opflow import MatrixEvolution, PauliSumOp
+            from qiskit.opflow import MatrixEvolution, MatrixOp
 
-            hamiltonian = PauliSumOp.from_list([('X', 1), ('Z',1)])
+            hamiltonian = MatrixOp([[0, 1], [1, 0]])
             evolution = MatrixEvolution()
-            evol_result = evolution.convert(hamiltonian)
-            evolved_state = result.to_circuit()
+            evol_result = evolution.convert(hamiltonian.exp_i())
+            evolved_state = evol_result.to_circuit()
      -
 
         .. code-block:: python
@@ -484,8 +482,7 @@ This class is no longer necessary, as the ``HamiltonianGate``\s can be directly 
             from qiskit.extensions import HamiltonianGate
             from qiskit import QuantumCircuit
 
-            hamiltonian = SparsePauliOp.from_list([('X', 1), ('Z',1)])
-            evol_gate = HamiltonianGate(hamiltonian, 1)
+            evol_gate = HamiltonianGate([[0, 1], [1, 0]], 1)
             evolved_state = QuantumCircuit(1)
             evolved_state.append(evol_gate, [0])
 
@@ -549,13 +546,13 @@ Algorithm-Agnostic Expectations
      - No replacement needed.
      - A factory class for automatic selection of an Expectation based on the Operator to be converted and backend used to sample the expectation value.
    * - ``opflow.AerPauliExpectation``
-     - No replacement needed. Use ``Estimator`` primitive from ``qiskit_aer`` instead.
+     - Use ``Estimator`` primitive from ``qiskit_aer`` instead.
      - An Expectation converter for using Aer's operator snapshot to take expectations of quantum state circuits over Pauli observables.
    * - ``opflow.MatrixExpectation``
-     - No replacement needed. Use ``Estimator`` primitive from ``qiskit`` instead (uses Statevector).
+     - Use ``Estimator`` primitive from ``qiskit`` instead (uses Statevector).
      - An Expectation converter which converts Operator measurements to be matrix-based so they can be evaluated by matrix multiplication.
    * - ``opflow.PauliExpectation``
-     - No replacement needed. Use ``Estimator`` primitive from ``qiskit`` (uses Statevector) or ``qiskit_ibm_runtime`` instead.
+     - Use any ``Estimator`` primitive.
      - An Expectation converter for Pauli-basis observables by changing Pauli measurements to a diagonal ({Z, I}^n) basis and appending circuit post-rotations to the measured state function.
 
 CVarExpectation
@@ -584,7 +581,8 @@ CVarExpectation
             backend = AerSimulator()
             ansatz = TwoLocal(2, 'ry', 'cz')
             op = PauliSumOp.from_list([('ZZ',1), ('IZ',1), ('II',1)])
-            cvar_expectation = CVaRExpectation(alpha=0.2)
+            alpha=0.2
+            cvar_expectation = CVaRExpectation(alpha=alpha)
             opt = SLSQP(maxiter=1000)
             vqe = VQE(ansatz, expectation=cvar_expectation, optimizer=opt, quantum_instance=backend)
             result = vqe.compute_minimum_eigenvalue(op)
@@ -602,7 +600,8 @@ CVarExpectation
             ansatz = TwoLocal(2, 'ry', 'cz')
             op = SparsePauliOp.from_list([('ZZ',1), ('IZ',1), ('II',1)])
             opt = SLSQP(maxiter=1000)
-            vqe = SamplingVQE(Sampler(), ansatz, opt)
+            alpha=0.2
+            vqe = SamplingVQE(Sampler(), ansatz, optm, aggregation=alpha)
             result = vqe.compute_minimum_eigenvalue(op)
      -
 
