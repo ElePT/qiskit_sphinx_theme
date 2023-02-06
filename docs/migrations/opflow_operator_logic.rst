@@ -9,7 +9,7 @@ Background
 
 The ``qiskit.opflow`` module was originally introduced as a layer between circuits and algorithms, a series of building blocks
 for quantum algorithms research and development. The core design of opflow was based on the assumption that the
-point of access to backends (be they real devices or simulators) was a ``backend.run()``
+point of access to backends (real devices or simulators) was a ``backend.run()``
 type of method: a method that takes in a circuit and returns its measurement results.
 Under this assumption, all the tasks related to operator handling and building expectation value
 computations were left to the user to manage. Opflow helped bridge that gap, it allowed to wrap circuits and
@@ -32,7 +32,7 @@ preparing a circuit to execute with a ``backend.run()`` type of method, the algo
 ``Estimator`` primitives, send parametrized circuits and observables, and directly receive quasi-probability distributions or
 expectation values (respectively). This workflow simplifies considerably the pre-processing and post-processing steps
 that previously relied on opflow. For example, the ``Estimator`` primitive returns expectation values from a series of
-circuit-observable pairs, superseding most of the functionality of the ``expectations`` submodule. Without the need of
+circuit-observable pairs, superseding most of the functionality of the ``expectations`` submodule. Without the need for
 building opflow expectations, most of the components in ``operators`` also became redundant, as they commonly wrapped
 elements from ``qiskit.quantum_info``.
 
@@ -98,6 +98,9 @@ in some of the ``quantum_info.BaseOperator`` subclasses.
 
 Operator Globals
 ----------------
+Opflow provided shortcuts to define common single qubit states, operators, and common non-parametrized gates in the
+``operator_globals`` module. These were mainly used for didactic purposes and can easily be replaced by their corresponding
+``quantum_info`` class: ``Pauli``, ``Clifford`` or ``Statavector``.
 
 1-Qubit Paulis
 ~~~~~~~~~~~~~~
@@ -210,7 +213,7 @@ Common non-parametrized gates (Clifford)
 Primitive and List Ops
 ----------------------
 Most of the workflows that previously relied in components from ``opflow.primitive_ops`` and ``opflow.list_ops`` can now
-leverage ``quantum_info.operators`` elements instead. Some of these classes don't require a 1-1 replacement because
+leverage elements from ``quantum_info.operators`` instead. Some of these classes do not require a 1-1 replacement because
 they were created to interface with other opflow components.
 
 PrimitiveOps
@@ -237,25 +240,43 @@ PrimitiveOps
      - For direct compatibility with classes in ``qiskit.algorithms``, wrap in ``quantum_info.SparsePauliOp``
    * - ``opflow.PauliSumOp``
      - ``quantum_info.SparsePauliOp``
-     -
+     - See example below
    * - ``opflow.TaperedPauliSumOp``
-     - This class combines the operator with its identified symmetries in one object, and with the refactoring of ``Z2Symmetries`` is no longer necessary
-     -
+     - This class was used to combine a ``PauliSumOp`` with its identified symmetries in one object. It has been deprecated without replacement
+     - See ``Z2Symmetries`` example for updated workflow
    * - ``opflow.Z2Symmetries``
      - ``quantum_info.Z2Symmetries``
-     - This class was refactored to also replace ``TaperedPauliSumOp``
+     - See example below
+
 
 PrimitiveOps Examples
 ~~~~~~~~~~~~~~~~~~~~~
-
-.. list-table:: Migration of ``qiskit.opflow.Z2Symmetries``
+.. list-table::
    :header-rows: 1
 
    * - opflow
      - alternative
      - notes
 
-   * -
+   * -  ``PauliSumOp`` Example:
+
+        .. code-block:: python
+
+            from qiskit.opflow import PuliSumOp
+            from qiskit.quantum_info import SparsePauliOp, Pauli
+
+            qubit_op = PauliSumOp(SparsePauliOp(Pauli("XYZY"), coeffs=[2]), coeff=-3j)
+
+     -
+
+        .. code-block:: python
+
+            from qiskit.quantum_info import SparsePauliOp, Pauli
+
+            qubit_op = SparsePauliOp(Pauli("XYZY")), coeff=-6j)
+
+     -
+   * -  ``Z2Symmetries`` and ``TaperedPauliSumOp`` Example:
 
         .. code-block:: python
 
@@ -271,13 +292,8 @@ PrimitiveOps Examples
                 ]
             )
             z2_symmetries = Z2Symmetries.find_Z2_symmetries(qubit_op)
-            primitive = SparsePauliOp.from_list(
-                [
-                ("I", -1.0424710218959303),
-                ("Z", -0.7879673588770277),
-                ("X", -0.18128880821149604),
-                ]
-            )
+            tapered_op = z2_symmetries.taper(qubit_op)
+            # can be represented as:
             tapered_op = TaperedPauliSumOp(primitive, z2_symmetries)
      -
 
@@ -295,8 +311,9 @@ PrimitiveOps Examples
                 ]
             )
             z2_symmetries = Z2Symmetries.find_z2_symmetries(qubit_op)
-            tapered_op = z2_symmetries.taper(qubit_op)[1]
+            tapered_op = z2_symmetries.taper(qubit_op)
      -
+
 
 ListOps
 ~~~~~~~
@@ -370,7 +387,9 @@ This module can be generally replaced by ``quantum_info.QuantumState``, with som
 Converters
 ----------
 
-They manipulate operators within opflow. Most are no longer necessary when using primitives.
+The role of this sub-module was to convert the operators into other opflow operator classes (``TwoQubitReduction``, ``PauliBasisChange``...).
+In the case of the ``CircuitSampler``, it traversed an operator and outputted approximations of its state functions using a quantum backend.
+Notably, this functionality has been replaced by the ``qiskit.primitives``.
 
 Circuit Sampler
 ~~~~~~~~~~~~~~~
@@ -432,8 +451,7 @@ Two Qubit Reduction
      - notes
 
    * -  ``TwoQubitReduction``
-     -  The mapper classes in ``qiskit-nature`` apply the two qubit reduction to the operator using the
-        ``Z2Symmetries`` class.
+     -  This class used to implement a chemistry-specific reduction. It has been directly integrated in to the parity mapper class in ``qiskit-nature`` and has no replacement in ``qiskit``.
      -
 
 Other Converters
@@ -460,7 +478,10 @@ Evolutions
 ----------
 
 The ``evolutions`` sub-module was created to provide building blocks for hamiltonian simulation algorithms,
-including various methods for trotterization. This module is divided
+including various methods for trotterization. The original opflow workflow for hamiltonian simulation did not allow for
+delayed synthesis of the gates or efficient transpilation of the circuits, so this functionality was migrated to the
+``qiskit.synthesis.evolution`` module.
+
 The ``opflow.PauliTrotterEvolution`` class computes evolutions for exponentiated sums of Paulis by changing them each to the
 Z basis, rotating with an RZ, changing back, and trotterizing following the desired scheme. Within its ``.convert`` method,
 the class follows a recursive strategy that involves creating ``opflow.EvolvedOp`` placeholders for the operators,
@@ -468,12 +489,11 @@ constructing ``PauliEvolutionGate``\s out of the operator primitives and supplyi
 perform the trotterization (either via a ``string``\, which is then inputted into a ``opflow.TrotterizationFactory``,
 or by supplying a method instance of ``opflow.Trotter()``, ``opflow.Suzuki()`` or ``opflow.QDrift()``).
 
-The different trotterization methods that extend ``opflow.TrotterizationBase`` were migrated (motivation?) to ``qiskit.synthesis``,
-and now extend the ``synthesis.evolution.ProductFormula`` base class. They no longer contain a ``.convert()`` method for standalone use,
-but now are designed to be plugged into the ``synthesis.PauliEvolutionGate`` and called via ``.synthesize()``.
+The different trotterization methods that extend ``opflow.TrotterizationBase`` were migrated to ``qiskit.synthesis``,
+and now extend the ``synthesis.evolution.ProductFormula`` base class. They no longer contain a ``.convert()`` method for
+standalone use, but now are designed to be plugged into the ``synthesis.PauliEvolutionGate`` and called via ``.synthesize()``.
 In this context, the job of the ``opflow.PauliTrotterEvolution`` class can now be handled directly by the algorithms
-(for example, ``algorithms.time_evolvers.TrotterQRTE``\), by constructing the evolution gate and synthesizing it (?),
-as shown in the following example:
+(for example, ``algorithms.time_evolvers.TrotterQRTE``\), as shown in the following example:
 
 .. list-table:: Migration of ``qiskit.opflow.evolutions (1/2)``
    :header-rows: 1
@@ -550,10 +570,10 @@ To summarize:
      - This class is no longer necessary.
      -
    * - ``opflow.Trotter``
-     - ``synthesis.SuzukiTrotter``
-     - This class implemented the Trotter-Suzuki product formula, but the ``synthesis`` module also offers a ``synthesis.LieTrotter`` class
+     - ``synthesis.SuzukiTrotter`` or ``synthesis.LieTrotter``
+     -
    * - ``opflow.Suzuki``
-     - ``synthesis.SuzukiTrotter(reps=1)``
+     - ``synthesis.SuzukiTrotter``
      -
    * - ``opflow.QDrift``
      - ``synthesis.QDrift``
@@ -595,16 +615,18 @@ Algorithm-Agnostic Expectations
      - notes
    * - ``opflow.ExpectationFactory``
      - No replacement needed.
-     - A factory class for automatic selection of an Expectation based on the Operator to be converted and backend used to sample the expectation value.
+     -
    * - ``opflow.AerPauliExpectation``
      - Use ``Estimator`` primitive from ``qiskit_aer`` instead.
-     - An Expectation converter for using Aer's operator snapshot to take expectations of quantum state circuits over Pauli observables.
+     -
    * - ``opflow.MatrixExpectation``
      - Use ``Estimator`` primitive from ``qiskit`` instead (uses Statevector).
-     - An Expectation converter which converts Operator measurements to be matrix-based so they can be evaluated by matrix multiplication.
+     -
    * - ``opflow.PauliExpectation``
      - Use any ``Estimator`` primitive.
-     - An Expectation converter for Pauli-basis observables by changing Pauli measurements to a diagonal ({Z, I}^n) basis and appending circuit post-rotations to the measured state function.
+     -
+
+TODO: ADD EXAMPLE!
 
 CVarExpectation
 ~~~~~~~~~~~~~~~
