@@ -196,42 +196,33 @@ Common non-parametrized gates (Clifford)
 Primitive and List Ops
 ----------------------
 Most of the workflows that previously relied in components from :mod:`~qiskit.opflow.primitive_ops` and
-:mod:`~qiskit.opflow.list_ops` can now leverage elements from :mod:`~qiskit.quantum_info.operators` instead.
+:mod:`~qiskit.opflow.list_ops` can now leverage elements from ``quantum_info``\'s :mod:`~qiskit.quantum_info.operators` instead.
 Some of these classes do not require a 1-1 replacement because they were created to interface with other
 opflow components.
 
-PrimitiveOps
+Primitive Ops
 ~~~~~~~~~~~~~~
-When looking for an alternative to update your code, it is important to keep in mind that
-:class:`~qiskit.opflow.primitive_ops.PrimitiveOp`
-acts as a factory to create the corresponding sub-class depending on the primitive used to initialize it:
+:class:`~qiskit.opflow.primitive_ops.PrimitiveOp` is the :mod:`~qiskit.opflow.primitive_ops` module's base class.
+It also acts as a factory to instantiate a corresponding sub-class depending on the computational primitive used
+to initialize it:
 
 .. list-table::
    :header-rows: 1
 
-   * - primitive passed to :class:`~qiskit.opflow.primitive_ops.PrimitiveOp`
-     - :class:`~qiskit.opflow.primitive_ops.PrimitiveOp` sub-class returned
+   * - class passed to constructor
+     - sub-class returned
 
    * - :class:`~qiskit.quantum_info.Pauli`
      - :class:`~qiskit.opflow.primitive_ops.PauliOp`
 
-   * - :class:`~qiskit.circuit.Instruction`
+   * - :class:`~qiskit.circuit.Instruction`, :class:`~qiskit.circuit.QuantumCircuit`
      - :class:`~qiskit.opflow.primitive_ops.CircuitOp`
 
-   * - :class:`~qiskit.circuit.QuantumCircuit`
-     - :class:`~qiskit.opflow.primitive_ops.CircuitOp`
-
-   * - ``list``
+   * - ``list``, ``np.ndarray``, ``scipy.sparse.spmatrix``, :class:`~qiskit.quantum_info.Operator`
      - :class:`~qiskit.opflow.primitive_ops.MatrixOp`
 
-   * - ``np.ndarray``
-     - :class:`~qiskit.opflow.primitive_ops.MatrixOp`
-
-   * - ``scipy.sparse.spmatrix``
-     - :class:`~qiskit.opflow.primitive_ops.MatrixOp`
-
-   * - :class:`~qiskit.quantum_info.Operator`
-     - :class:`~qiskit.opflow.primitive_ops.MatrixOp`
+Thus, when migrating opflow code, it is important to look for alternatives to replace the specific subclasses that
+might have been used "under the hood" in the original code:
 
 .. list-table::
    :header-rows: 1
@@ -240,41 +231,44 @@ acts as a factory to create the corresponding sub-class depending on the primiti
      - alternative
 
    * - :class:`~qiskit.opflow.primitive_ops.PrimitiveOp`
-     - No direct replacement. In most use-cases (representing operators),
-       the best alternative is :class:`~qiskit.quantum_info.Operator``. This class acted as base class and **factory** for creating one of the operator sub-classes listed below.
+     - No direct replacement. In most use-cases (representing generic operators),
+       the alternative is :class:`~qiskit.quantum_info.Operator`.
 
    * - :class:`~qiskit.opflow.primitive_ops.CircuitOp`
-     - No direct replacement. Can directly use :class:`~qiskit.QuantumCircuit` instead.
+     - No direct replacement. :class:`~qiskit.QuantumCircuit` could be used as an alternative in some workflows.
 
    * - :class:`~qiskit.opflow.primitive_ops.MatrixOp`
-     - :class:`~qiskit.quantum_info.Operator``
+     - :class:`~qiskit.quantum_info.Operator`
 
    * - :class:`~qiskit.opflow.primitive_ops.PauliOp`
      - :class:`~qiskit.quantum_info.Pauli`. For direct compatibility with classes in :mod:`~qiskit.algorithms`,
        wrap in :class:`~qiskit.quantum_info.SparsePauliOp`
 
    * - :class:`~qiskit.opflow.primitive_ops.PauliSumOp`
-     - :class:`~qiskit.quantum_info.SparsePauliOp`. See example below
+     - :class:`~qiskit.quantum_info.SparsePauliOp`. See example below.
 
    * - :class:`~qiskit.opflow.primitive_ops.TaperedPauliSumOp`
      - This class was used to combine a :class:`~PauliSumOp` with its identified symmetries in one object.
        This functionality is not currently used in any workflow, and has been deprecated without replacement.
-       See ``Z2Symmetries`` example for updated workflow
+       See ``Z2Symmetries`` example for updated workflow.
 
    * - :class:`~qiskit.opflow.primitive_ops.Z2Symmetries`
      - :class:`~qiskit.quantum_info.Z2Symmetries`. See example below.
 
 
-PrimitiveOp Examples
-~~~~~~~~~~~~~~~~~~~~~
+Primitive Ops Examples
+~~~~~~~~~~~~~~~~~~~~~~
+
+``PauliSumOp`` Example
+#######################
+
 .. list-table::
    :header-rows: 1
 
    * - opflow
      - alternative
 
-   * -  ``PauliSumOp`` **Example:**
-
+   * -
         .. code-block:: python
 
             from qiskit.opflow import PauliSumOp
@@ -283,15 +277,21 @@ PrimitiveOp Examples
             qubit_op = PauliSumOp(SparsePauliOp(Pauli("XYZY"), coeffs=[2]), coeff=-3j)
 
      -
-
         .. code-block:: python
 
             from qiskit.quantum_info import SparsePauliOp, Pauli
 
             qubit_op = SparsePauliOp(Pauli("XYZY")), coeff=-6j)
 
-   * -  ``Z2Symmetries`` **and** ``TaperedPauliSumOp`` **Example:**
+``Z2Symmetries`` and ``TaperedPauliSumOp`` Example
+##################################################
+.. list-table::
+   :header-rows: 1
 
+   * - opflow
+     - alternative
+
+   * -
         .. code-block:: python
 
             from qiskit.opflow import PuliSumOp, Z2Symmetries, TaperedPauliSumOp
@@ -310,7 +310,6 @@ PrimitiveOp Examples
             # can be represented as:
             tapered_op = TaperedPauliSumOp(primitive, z2_symmetries)
      -
-
         .. code-block:: python
 
             from qiskit.quantum_info import SparsePauliOp, Z2Symmetries
@@ -332,9 +331,9 @@ ListOps
 
 The :mod:`~qiskit.opflow.list_ops` module contained classes for manipulating lists of :mod:`~qiskit.opflow.primitive_ops`
 or :mod:`~qiskit.opflow.state_fns`. The :mod:`~qiskit.quantum_info` alternatives for this functionality are the
-:mod:`~qiskit.quantum_info.PauliList`, :mod:`~qiskit.quantum_info.SparsePauliOp` (for sums of ``Pauli``\s),
-:mod:`~qiskit.quantum_info.PauliTable` (symplectic representation of lists of Pauli operators) and
-:mod:`~qiskit.quantum_info.StabilizerTable` (symplectic representation of lists of state functions).
+:class:`~qiskit.quantum_info.PauliList`, :class:`~qiskit.quantum_info.SparsePauliOp` (for sums of ``Pauli``\s),
+:class:`~qiskit.quantum_info.PauliTable` (symplectic representation of lists of Pauli operators) and
+:class:`~qiskit.quantum_info.StabilizerTable` (symplectic representation of lists of state functions).
 
 .. list-table::
    :header-rows: 1
@@ -343,27 +342,32 @@ or :mod:`~qiskit.opflow.state_fns`. The :mod:`~qiskit.quantum_info` alternatives
      - alternative
 
    * - :class:`~qiskit.opflow.list_ops.ListOp`
-     - No direct replacement. This is the base class for operator lists. For ``Pauli`` operators, an
-       alternative is :mod:`~qiskit.quantum_info.PauliList`.
+     - No direct replacement. This is the base class for operator lists. For ``Pauli`` operators, the
+       alternative is :class:`~qiskit.quantum_info.PauliList`. For lists of state representations, an
+       option is :class:`~qiskit.quantum_info.StabilizerTable`
 
    * - :class:`~qiskit.opflow.list_ops.ComposedOp`
-     - No direct replacement
+     - No direct replacement. Current workflows do not require composition of states and operators within
+       one object.
 
    * - :class:`~qiskit.opflow.list_ops.SummedOp`
-     - No direct replacement. For sums of ``Pauli`` operators, use :class:`~qiskit.quantum_info.SparsePauliOp`.
+     - No direct replacement. For ``Pauli`` operators, use :class:`~qiskit.quantum_info.SparsePauliOp`.
 
    * - :class:`~qiskit.opflow.list_ops.TensoredOp`
      - No direct replacement. For ``Pauli`` operators, use :class:`~qiskit.quantum_info.SparsePauliOp`.
 
 ListOp Examples
 ~~~~~~~~~~~~~~~
+
+``ListOp`` Example:
+####################
 .. list-table::
    :header-rows: 1
 
    * - opflow
      - alternative
 
-   * -  ``ListOp`` **Example:**
+   * -
         .. code-block:: python
 
             from qiskit.opflow import Zero, One, ListOp
@@ -379,22 +383,22 @@ ListOp Examples
 State Functions
 ---------------
 
-This module can be generally replaced by :class:`~qiskit.quantum_info.QuantumState`,
+The :mod:`~qiskit.opflow.state_fns` module can be generally replaced by :class:`~qiskit.quantum_info.QuantumState`,
 with some differences to keep in mind:
 
 1. The primitives-based workflow does not rely on constructing state functions as opflow did
 2. Algorithm-specific functionality has been migrated to the respective algorithm's module
 
 Similarly to :class:`~qiskit.opflow.primitive_ops.PrimitiveOp`, :class:`~qiskit.opflow.state_fns.StateFn`
-acts as a factory to create the corresponding sub-class depending on the primitive used to initialize it:
+acts as a factory to create the corresponding sub-class depending on the computational primitive used to initialize it:
 
 .. list-table::
    :header-rows: 1
 
-   * - primitive passed to :class:`~qiskit.opflow.state_fns.StateFn`
-     - :class:`~qiskit.opflow.state_fns.StateFn` sub-class returned
+   * - class passed to constructor
+     - sub-class returned
 
-   * - ``str``, ``dict``, qiskit result object?
+   * - ``str``, ``dict``, :class:`~qiskit.result.Result`
      - :class:`~qiskit.opflow.state_fns.DictStateFn`
 
    * - ``list``, ``np.ndarray``, :class:`~qiskit.quantum_info.Statevector`
@@ -406,7 +410,8 @@ acts as a factory to create the corresponding sub-class depending on the primiti
    * - :class:`~qiskit.opflow.OperatorBase`
      - :class:`~qiskit.opflow.state_fns.OperatorStateFn`
 
-
+This means that references to :class:`~qiskit.opflow.state_fns.StateFn` in opflow code should be examined to
+identify the sub-class that is being used, to then look for an alternative.
 
 .. list-table::
    :header-rows: 1
@@ -438,14 +443,16 @@ acts as a factory to create the corresponding sub-class depending on the primiti
 StateFn Examples
 ~~~~~~~~~~~~~~~~~
 
+``StateFn`` Example:
+####################
+
 .. list-table::
    :header-rows: 1
 
    * - opflow
      - alternative
 
-   * -  ``StateFn`` **Example:**
-
+   * -
         .. code-block:: python
 
             from qiskit.opflow import PuliSumOp
@@ -637,7 +644,7 @@ To summarize:
      - :class:`~synthesis.SuzukiTrotter` or :class:`~synthesis.LieTrotter`
 
    * - :class:`~qiskit.opflow.evolutions.Suzuki`
-     - `:class:~synthesis.SuzukiTrotter`
+     - :class:~synthesis.SuzukiTrotter`
 
    * - :class:`~qiskit.opflow.evolutions.QDrift`
      - :class:`~synthesis.QDrift`
