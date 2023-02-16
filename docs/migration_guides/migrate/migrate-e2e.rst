@@ -1,13 +1,6 @@
 Guide on algorithm tuning options
 =================================
 
-..
-    I think that we can refactor this section and focus it more on "Achieving performance in your algorithms with the primitives". Here, I would include:
-
-    1. The use of sessions
-    2. How to leverage the async jobs (these already existed in backend.run() but we can highlight them)
-..
-
 One of the advantage of the primitives is that they abstract away the circuit execution setup, so that algorithm developers
 can focus on the pure algorithmic components. However, sometimes, to get the best out of an algorithm, you might want
 to tune certain primitive options. This section will walk you through some of the common settings you might need.
