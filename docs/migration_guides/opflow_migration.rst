@@ -1211,5 +1211,5 @@ Gradients
 *Back to* `Contents`_
 
 Replaced by the new :mod:`qiskit.algorithms.gradients` module. You can see further details in the
-`algorithms migration guide <http://>`_.
+`algorithms migration guide <http://qisk.it/algo_migration>`_.
 
