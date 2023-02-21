@@ -1,15 +1,26 @@
 Calculate expectation values in an algorithm
 ==============================================
 
-The role of the `Estimator` primitive is two-fold: on one hand, it acts as an entry point to the quantum devices or simulators, replacing `backend.run()` (or `QuantumInstance.execute()`). On the other hand, it is an **algorithmic abstraction** for expectation value calculations, which removes the need to perform operations to construct the final expectation circuit. This results in a considerable reduction of the code complexity, and a more compact algorithm design. 
+The role of the ``Estimator`` primitive is two-fold: on one hand, it acts as an entry point to the quantum devices or
+simulators, replacing ``backend.run()``.
 
-The following example uses common tools from the ``qiskit.opflow`` module as a reference for the "legacy way of doing things", but we acknowledge that some of you might have used custom code for this task. In that case, you can decide between keeping your custom code and replacing `backend.run()` with a `Sampler`, or replacing your custom code with the `Estimator` primitive.
+On the other hand, it is an **algorithmic abstraction** for expectation value calculations, which removes the need
+to perform operations to construct the final expectation circuit. This results in a considerable reduction of the code
+complexity, and a more compact algorithm design.
+
+.. note::
+
+    The following example uses common tools from the ``qiskit.opflow`` module as a reference for the "legacy way of doing
+    things", but we acknowledge that some of you might have used custom code for this task. In that case, you can decide
+    between keeping your custom code and replacing ``backend.run()`` with a ``Sampler``, or replacing your custom code with
+    the ``Estimator`` primitive.
 
 
 Problem definition 
--------------------------------
+--------------------
 
-We want to compute the expectation value of a quantum state (circuit) with respect to a certain operator. Here we are using the H2 molecule and an arbitrary circuit as the quantum state:
+We want to compute the expectation value of a quantum state (circuit) with respect to a certain operator.
+Here we are using the H2 molecule and an arbitrary circuit as the quantum state:
 
 .. code-block:: python
 
@@ -35,76 +46,43 @@ We want to compute the expectation value of a quantum state (circuit) with respe
 
 .. _a-legacy-opflow:
 
-Legacy methods (using opflow)
------------------------------
+[Legacy] Convert problem to ``opflow``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-`Opflow <https://qiskit.org/documentation/apidoc/opflow.html>`__ provided its own classes to represent both operators and quantum states:
+`Opflow <https://qiskit.org/documentation/apidoc/opflow.html>`__ provided its own classes to represent both
+operators and quantum states, so the problem defined above would be wrapped as:
 
 .. code-block:: python
 
     from qiskit.opflow import CircuitStateFn, PauliSumOp
 
     opflow_op = PauliSumOp(op)
-    opflow_state = CircuitStateFn(state) # convert to a state
+    opflow_state = CircuitStateFn(state)
 
-New methods (using primitives)
--------------------------------
+This step is no longer necessary using the primitives.
 
-These code examples have been updated to use primitives.
+.. note::
 
-.. _a-legacy-exact:
+    For more information on migrating from ``opflow``, see the `opflow migration guide <qisk.it/opflow_migration>`_ .
 
-Option 1: Calculate the expectation value exactly (classical)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Calculate expectation values on real device or cloud simulator
+---------------------------------------------------------------
 
-Sometimes the system is small enough that we can compute the expectation value classically. With opflow, this was done by composing the circuit and operator states, then calling for the exact evaluation method:
+[Legacy] Using ``opflow`` + ``backend.run()``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. raw:: html
+You can see the number of steps that legacy workflow involved to be able to compute an expectation
+value:
 
-    <details>
-    <summary><a>Legacy method</a></summary>
+.. note::
 
-.. code-block:: python
-
-    opflow_state_func = opflow_state.adjoint().compose(opflow_op).compose(opflow_state)
-    expectation_value_1 = opflow_state_func.eval().real # easy expectation value, use for small systems only!
-
-    print("exact: ", expectation_value_1)
-
-.. raw:: html
-
-   </details>
-
-.. raw:: html
-
-    <details>
-    <summary><a>New method</a></summary>
-
-This can be done with the Estimator primitive in `qiskit.primitives`:
-
-.. code-block:: python
-
-    from qiskit.primitives import Estimator
-
-    estimator = Estimator()
-
-    result = estimator.run([state], [op]).result().values
-    print(result)
-
-.. raw:: html
-
-   </details>
-
-.. _a-legacy-construct:
-
-Option 2: Construct the expectation circuit and sample on a system or simulator
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-**Legacy method**
+    You can replace ``ibmq_qasm_simulator`` with your device name to see the
+    complete workflow for a real device.
 
 .. code-block:: python
 
     from qiskit.opflow import StateFn, PauliExpectation, CircuitSampler
+    from qiskit_ibm_provider import IBMProvider
 
     # Define the state to sample
     measurable_expression = StateFn(opflow_op, is_measurement=True).compose(opflow_state)
@@ -112,89 +90,31 @@ Option 2: Construct the expectation circuit and sample on a system or simulator
     # Convert to expectation value calculation object
     expectation = PauliExpectation().convert(measurable_expression)
 
-    # Note that there are other expectation value methods: MatrixExpectation(), AerPauliExpectation(), 
-    # but they are used just like PauliExpectation()
-
-Next, the actual calculation is done by the `CircuitSampler` class, which receives a backend or `QuantumInstance` and the expectation object. Here are some examples of how it can be used:
-
-**New method - Run locally by using the terra primitive**
-
-0. Run locally by using the terra primitive
-*********************************************
-
-For the terra primitive, if no shots are specified, it performs an exact calculation. If shots are specified, it performs a shot-based simulation (not quite qasm, as you can see). There is no real legacy alternative for this:
-
-.. code-block:: python
-
-   from qiskit.primitives import Estimator
-
-    estimator = Estimator(options={"shots": 1024})
-
-    result = estimator.run([state], [op]).result().values
-    print(result)
-
-.. _a-legacy-run-aer:
-
-1. Run locally by using an AerSimulator
-*****************************************
-
-**Legacy method**
-
-.. code-block:: python
-
-   from qiskit.providers.aer import AerSimulator
-
-    # define backend -> local simulator
-    simulator = AerSimulator() 
-
-    # inject backend into circuit sampler
-    sampler = CircuitSampler(simulator).convert(expectation)
-
-    # evaluate
-    expectation_value_2 = sampler.eval().real
-
-    print("sampled: ", expectation_value_2)
-
-**New method**
-
-.. code-block:: python
-
-    from qiskit_aer.primitives import Estimator
-
-    estimator = Estimator(run_options={"shots": 1024})
-
-    result = estimator.run([state], [op]).result().values
-    print(result)
-
-.. _a-legacy-run-remote:
-
-2. Run on a remote simulator or real backend
-*********************************************
-
-**Legacy method**
-
-Here we use the `ibmq_qasm_simulator`, but the workflow is the same when using a real device.
-
-.. code-block:: python
-
-    from qiskit import IBMQ
-
-    IBMQ.load_account()
-    provider = IBMQ.get_provider(hub='ibm-q')
+    # Define provider and backend (formerly imported from IBMQ)
+    provider = IBMProvider()
     backend = provider.get_backend("ibmq_qasm_simulator")
 
-    # inject backend into circuit sampler
-    sampler = CircuitSampler(backend).convert(expectation) 
+    # Inject backend into circuit sampler
+    sampler = CircuitSampler(backend).convert(expectation)
 
-    # evaluate
-    expectation_value_4 = sampler.eval().real
+    # Evaluate
+    expectation_value = sampler.eval().real
 
-    print("sampled: ", expectation_value_4)
+    print("expectation: ", expectation_value)
 
-**New method**
+[New] Using Runtime ``Estimator``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Now, you can notice how the ``Estimator`` simplifies the user-side syntax, which makes it a more
+convenient tool for algorithm design.
+
+.. note::
+
+    You can replace ``ibmq_qasm_simulator`` with your device name to see the
+    complete workflow for a real device.
 
 .. code-block:: python
-    
+
     from qiskit_ibm_runtime import QiskitRuntimeService, Estimator
 
     service = QiskitRuntimeService(channel="ibm_quantum")
@@ -202,5 +122,77 @@ Here we use the `ibmq_qasm_simulator`, but the workflow is the same when using a
 
     estimator = Estimator(session=backend)
 
-    result = estimator.run([state], [op]).result().values
-    print(result)
+    expectation_value = estimator.run(state, op).result().values
+
+    print("expectation: ", expectation_value)
+
+
+
+Other execution alternatives (non-Runtime)
+------------------------------------------
+
+In some cases, you might want to test your algorithm using local simulation. For this means, we
+will should you two more migration paths using non-runtime primitives.
+
+[Legacy] Using Qiskit Aer's Statevector simulator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+    from qiskit.opflow import StateFn, PauliExpectation, CircuitSampler
+    from qiskit_aer import AerSimulator
+
+    # Define the state to sample
+    measurable_expression = StateFn(opflow_op, is_measurement=True).compose(opflow_state)
+
+    # Convert to expectation value calculation object
+    expectation = PauliExpectation().convert(measurable_expression)
+
+    # Define statevector simulator
+    simulator = AerSimulator(mothod="statevector", shots=100)
+
+    # Inject backend into circuit sampler
+    sampler = CircuitSampler(simulator).convert(expectation)
+
+    # Evaluate
+    expectation_value = sampler.eval().real
+
+    print("expectation: ", expectation_value)
+
+
+[New] Using Reference ``Estimator`` or Aer ``Estimator``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Reference ``Estimator`` allows to perform either an exact or a shot-based noisy simulation based
+on the ``Statevector`` class in the ``qiskit.quantuminfo`` module.
+
+.. code-block:: python
+
+    from qiskit.primitives import Estimator
+
+    estimator = Estimator()
+
+    result = estimator.run(state, op).result().values
+
+    # for shot-based simulation:
+    expectation_value = estimator.run(state, op, shots=100).result().values
+
+    print("expectation: ", expectation_value)
+
+You can still access the Aer Simulator through its dedicated
+``Estimator``. This can come in handy for performing simulations with noise models. For more
+information on using the Aer Primitives, you can check out this
+`VQE tutorial <https://qiskit.org/documentation/tutorials/algorithms/03_vqe_simulation_with_noise.html>`_ .
+
+.. code-block:: python
+
+    from qiskit_aer.primitives import Estimator # all that changes is the import!!!
+
+    estimator = Estimator()
+
+    result = estimator.run(state, op).result().values
+
+    # for shot-based simulation:
+    expectation_value = estimator.run(state, op, shots=100).result().values
+
+    print("expectation: ", expectation_value)
