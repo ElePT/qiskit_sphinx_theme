@@ -1,6 +1,6 @@
-================================
+################################
 Quantum Instance Migration Guide
-================================
+################################
 
 The :class:`~qiskit.utils.QuantumInstance` is a utility class that allowed to jointly
 configure the circuit transpilation and execution steps, and provided useful tools for algorithm development,
@@ -24,7 +24,8 @@ Summary of migration alternatives for the :class:`~qiskit.utils.QuantumInstance`
      - Deprecated
 
 Contents
---------
+========
+
 * `Choosing the right primitive for your task`_
 * `Choosing the right primitive for your settings`_
 * `Code examples`_
@@ -56,7 +57,7 @@ Contents
     For guidelines on which primitives to choose for your task. Please continue reading.
 
 Choosing the right primitive for your task
-------------------------------------------
+===========================================
 
 While the :class:`~qiskit.utils.QuantumInstance` was designed as as single, highly-configurable, task-agnostic class,
 the primitives don't follow the same principle. There are multiple primitives, and each is optimized for a specific
@@ -93,7 +94,7 @@ yourself two questions:
 
 
 Choosing the right primitive for your settings
-----------------------------------------------
+==============================================
 
 Certain :class:`~qiskit.utils.QuantumInstance` features are only available in certain primitive implementations.
 The following table summarizes the most common :class:`~qiskit.utils.QuantumInstance` settings and which
@@ -168,7 +169,7 @@ primitives **expose a similar setting through their interface**:
 (**) For more information on Runtime sessions, visit `this how-to <https://qiskit.org/documentation/partners/qiskit_ibm_runtime/how_to/run_session.html>`_.
 
 Code examples
--------------
+=============
 
 .. raw:: html
 
@@ -183,33 +184,25 @@ as backend:
 
 .. code-block:: python
 
-    from qiskit import QuantumCircuit
-    from qiskit_aer import AerSimulator
-    from qiskit.utils import QuantumInstance
+    >>> from qiskit import QuantumCircuit
+    >>> from qiskit_aer import AerSimulator
+    >>> from qiskit.utils import QuantumInstance
 
-    circuit = QuantumCircuit(2)
-    circuit.x(0)
-    circuit.x(1)
-    circuit.measure_all()
+    >>> circuit = QuantumCircuit(2)
+    >>> circuit.x(0)
+    >>> circuit.x(1)
+    >>> circuit.measure_all()
 
-    simulator = AerSimulator()
-    qi = QuantumInstance(backend=simulator, shots=200, backend_options={"method": "statevector"})
-    result = qi.execute(circuit).results[0]
-    # result: ExperimentResult(shots=200, success=True, meas_level=2,
-    #         data=ExperimentResultData(counts={'0x3': 200}, statevector=Statevector([0.+0.j, 0.+0.j, 0.+0.j, 1.+0.j],
-    #         dims=(2, 2))), header=QobjExperimentHeader(clbit_labels=[['meas', 0], ['meas', 1]],
-    #         creg_sizes=[['meas', 2]], global_phase=0.0, memory_slots=2,
-    #         metadata={}, n_qubits=2, name='circuit-136', qreg_sizes=[['q', 2]], qubit_labels=[['q', 0], ['q', 1]]),
-    #         status=DONE, seed_simulator=1625693156, metadata={'noise': 'ideal', 'batched_shots_optimization': False,
-    #         'remapped_qubits': False, 'parallel_state_update': 1, 'parallel_shots': 16, 'device': 'CPU',
-    #         'active_input_qubits': [0, 1], 'measure_sampling': False, 'num_clbits': 2, 'input_qubit_map': [[1, 1], [0, 0]],
-    #         'num_qubits': 2, 'method': 'statevector', 'result_types': {'statevector': 'save_statevector'},
-    #         'result_subtypes': {'statevector': 'single'}, 'fusion': {'applied': False, 'max_fused_qubits': 5,
-    #         'threshold': 14, 'enabled': True}}, time_taken=0.011046995)
-    data = result.data
-    # result: ExperimentResultData(counts={'0x3': 1},
-    #         statevector=Statevector([0.+0.j, 0.+0.j, 0.+0.j, 1.+0.j], dims=(2, 2)))
-    counts = data.get_counts()
+    >>> simulator = AerSimulator()
+    >>> qi = QuantumInstance(backend=simulator, shots=200, backend_options={"method": "statevector"})
+    >>> result = qi.execute(circuit).results[0]
+    >>> result
+    ExperimentResult(shots=200, success=True, meas_level=2, data=ExperimentResultData(counts={'0x3': 200}), header=QobjExperimentHeader(clbit_labels=[['meas', 0], ['meas', 1]], creg_sizes=[['meas', 2]], global_phase=0.0, memory_slots=2, metadata={}, n_qubits=2, name='circuit-112', qreg_sizes=[['q', 2]], qubit_labels=[['q', 0], ['q', 1]]), status=DONE, seed_simulator=3116700546, metadata={'parallel_state_update': 16, 'parallel_shots': 1, 'sample_measure_time': 6.0573e-05, 'noise': 'ideal', 'batched_shots_optimization': False, 'remapped_qubits': False, 'device': 'CPU', 'active_input_qubits': [0, 1], 'measure_sampling': True, 'num_clbits': 2, 'input_qubit_map': [[1, 1], [0, 0]], 'num_qubits': 2, 'method': 'statevector', 'fusion': {'applied': False, 'max_fused_qubits': 5, 'threshold': 14, 'enabled': True}}, time_taken=0.000426016)
+    >>> data = result.data
+    >>> data
+    ExperimentResultData(counts={'0x3': 200})
+    >>> counts = result.get_counts()
+    >>> counts
     # counts: {'11': 1}
 
 **Using Primitives**
