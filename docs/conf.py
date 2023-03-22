@@ -30,6 +30,7 @@
 """
 Sphinx documentation builder
 """
+import doctest
 import os
 import sys
 sys.path.insert(0, os.path.abspath('.'))
@@ -71,6 +72,7 @@ extensions = [
     'sphinx.ext.extlinks',
     'jupyter_sphinx',
     'sphinx_design',
+    "sphinx.ext.doctest"
 ]
 
 # -----------------------------------------------------------------------------
@@ -149,3 +151,7 @@ autoclass_content = 'both'
 html_context = {
     'analytics_enabled': True
 }
+
+# -- Options for doctest -------------------------------------
+
+doctest_default_flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE | doctest.IGNORE_EXCEPTION_DETAIL | doctest.DONT_ACCEPT_TRUE_FOR_1
